@@ -7,6 +7,10 @@
 //
 
 #import "AppDelegate.h"
+#import "AppDelegate+System.h"
+#import "NaviController.h"
+#import "ViewController.h"
+#import "DetailViewController.h"
 
 @interface AppDelegate ()
 
@@ -16,30 +20,57 @@
 
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
-    // Override point for customization after application launch.
+    //全局默认配置
+    [self setupGlobalConfig];
+    [UINavigationBar appearance].translucent = NO;
+    
+    self.window = [[UIWindow alloc] initWithFrame:[UIScreen mainScreen].bounds];
+    NSString *accountInfoPath = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES).firstObject stringByAppendingPathComponent:@"AccountInfo.plist"];
+    if (![[NSFileManager defaultManager] fileExistsAtPath:accountInfoPath]) {
+        NSMutableDictionary *dic = [[NSMutableDictionary alloc] initWithContentsOfFile:[[NSBundle mainBundle] pathForResource:@"AccountInfo" ofType:@"plist"]];
+        NSMutableDictionary *accounts = [[NSMutableDictionary alloc] initWithDictionary:dic copyItems:YES];
+        
+        [accounts writeToFile:accountInfoPath atomically:YES];
+    }
+    
+    NSString *currentAccountPath = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES).firstObject stringByAppendingPathComponent:@"CurrentAccount.plist"];
+    if (![[NSFileManager defaultManager] fileExistsAtPath:currentAccountPath]) {
+        ViewController *viewController = [ViewController new];
+        NaviController *naviC = [[NaviController alloc] initWithRootViewController:viewController];
+        _window.rootViewController = naviC;
+        [_window makeKeyAndVisible];
+        return YES;
+    }else {
+        NSString *keyName = [NSArray arrayWithContentsOfFile:currentAccountPath].firstObject;
+        DetailViewController *detailVC = [[DetailViewController alloc] initWithKeyName:keyName];
+        NaviController *naviC = [[NaviController alloc] initWithRootViewController:detailVC];
+        _window.rootViewController = naviC;
+        [_window makeKeyAndVisible];
+        
+        
+        if ([UIDevice currentDevice].systemVersion.floatValue >= 8.0) {
+            [application registerUserNotificationSettings:[UIUserNotificationSettings settingsForTypes:UIUserNotificationTypeAlert|                                                           UIUserNotificationTypeBadge|
+                UIUserNotificationTypeSound
+                categories:nil]];
+        }else {
+            [application registerForRemoteNotificationTypes:UIRemoteNotificationTypeAlert|
+                UIRemoteNotificationTypeBadge|
+                UIRemoteNotificationTypeSound];
+        }
+        
+        UILocalNotification *timeNotification = [UILocalNotification new];
+        timeNotification.alertBody = @"该记日记啦~O(∩_∩)O~";
+        timeNotification.alertTitle = @"习惯提醒";
+        timeNotification.soundName = UILocalNotificationDefaultSoundName;
+        timeNotification.applicationIconBadgeNumber = 1;
+        timeNotification.fireDate = [NSDate dateWithTimeIntervalSince1970:60 * 60 * 13];
+        timeNotification.repeatInterval = NSCalendarUnitDay;
+        
+        [application scheduleLocalNotification:timeNotification];
+        return YES;
+    }
     return YES;
 }
 
-- (void)applicationWillResignActive:(UIApplication *)application {
-    // Sent when the application is about to move from active to inactive state. This can occur for certain types of temporary interruptions (such as an incoming phone call or SMS message) or when the user quits the application and it begins the transition to the background state.
-    // Use this method to pause ongoing tasks, disable timers, and throttle down OpenGL ES frame rates. Games should use this method to pause the game.
-}
-
-- (void)applicationDidEnterBackground:(UIApplication *)application {
-    // Use this method to release shared resources, save user data, invalidate timers, and store enough application state information to restore your application to its current state in case it is terminated later.
-    // If your application supports background execution, this method is called instead of applicationWillTerminate: when the user quits.
-}
-
-- (void)applicationWillEnterForeground:(UIApplication *)application {
-    // Called as part of the transition from the background to the inactive state; here you can undo many of the changes made on entering the background.
-}
-
-- (void)applicationDidBecomeActive:(UIApplication *)application {
-    // Restart any tasks that were paused (or not yet started) while the application was inactive. If the application was previously in the background, optionally refresh the user interface.
-}
-
-- (void)applicationWillTerminate:(UIApplication *)application {
-    // Called when the application is about to terminate. Save data if appropriate. See also applicationDidEnterBackground:.
-}
 
 @end
